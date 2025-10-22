@@ -162,75 +162,52 @@
         }
 
 
+        /* Top progress bar */
         #loading {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-            z-index: 10;
-        }
-
-        /* Chinese-themed loading spinner */
-        .loader {
-            width: 120px;
-            height: 120px;
-            margin: 0 auto 30px;
-            position: relative;
-        }
-
-        .dragon-ring {
-            position: absolute;
+            position: fixed;
+            top: 0;
+            left: 0;
             width: 100%;
+            z-index: 1000;
+        }
+
+        #loading-bar-container {
+            width: 100%;
+            height: 6px;
+            background: rgba(0, 0, 0, 0.5);
+            border-bottom: 2px solid #FFD700;
+        }
+
+        #loading-bar {
             height: 100%;
-            border: 4px solid transparent;
-            border-top-color: #FFD700;
-            border-right-color: #FFA500;
-            border-radius: 50%;
-            animation: dragonSpin 2s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
+            width: 0%;
+            background: linear-gradient(90deg, #FFD700, #FFA500, #FF6347);
+            background-size: 200% 100%;
+            animation: shimmerBar 2s ease-in-out infinite;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+            transition: width 0.3s ease-out;
         }
 
-        .dragon-ring:nth-child(2) {
-            width: 80%;
-            height: 80%;
-            top: 10%;
-            left: 10%;
-            border-top-color: #FF6347;
-            border-right-color: #FFD700;
-            animation-delay: -0.5s;
-            animation-duration: 1.5s;
-        }
-
-        .dragon-symbol {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 48px;
-            font-family: 'Ma Shan Zheng', cursive;
-            color: #FFD700;
-            animation: pulse 2s ease-in-out infinite;
-        }
-
-        @keyframes dragonSpin {
-            0% { transform: rotate(0deg) scale(1); }
-            50% { transform: rotate(180deg) scale(1.1); }
-            100% { transform: rotate(360deg) scale(1); }
+        @keyframes shimmerBar {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
         }
 
         #loading-text {
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
             color: #FFD700;
-            font-size: 20px;
+            font-size: 18px;
             font-family: 'Noto Serif SC', serif;
-            text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.8),
+                         0 2px 4px rgba(0, 0, 0, 0.8);
+            background: rgba(139, 0, 0, 0.9);
+            padding: 8px 24px;
+            border-radius: 20px;
+            border: 2px solid #FFD700;
             animation: glow 2s ease-in-out infinite;
-        }
-
-        #loading-progress {
-            color: #FFF;
-            font-size: 16px;
-            margin-top: 10px;
-            font-family: 'Courier New', monospace;
         }
 
 
@@ -253,13 +230,10 @@
 <body>
     <div id="container">
         <div id="loading">
-            <div class="loader">
-                <div class="dragon-ring"></div>
-                <div class="dragon-ring"></div>
-                <div class="dragon-symbol">龙</div>
+            <div id="loading-bar-container">
+                <div id="loading-bar"></div>
             </div>
-            <div id="loading-text">加载中...</div>
-            <div id="loading-progress">0%</div>
+            <div id="loading-text">🐉 加载中... <span id="loading-progress">0%</span></div>
         </div>
         <div id="error"></div>
         
@@ -519,6 +493,7 @@
                         // Update loading progress for first animation only
                         if (index === 0 && !isFirstAnimationShown) {
                             document.getElementById('loading-progress').textContent = `${percent.toFixed(0)}%`;
+                            document.getElementById('loading-bar').style.width = `${percent}%`;
                         }
                         
                         console.log(`${animName}: ${percent.toFixed(0)}% | Overall: ${overall.toFixed(0)}%`);
