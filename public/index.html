@@ -252,9 +252,16 @@
         import { TGALoader } from 'three/addons/loaders/TGALoader.js';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-        // ANIMATION CONFIGURATION
-        const ANIMATION_FILE = 'Attack_Breath'; // Options: Flying, Idle, Roar, Attack_Breath, Attack_Left, Attack_Right, Attack_Tail, Bite, Knockout, Torando
-        const ANIMATIONS_TO_PLAY = 'all';
+        // ANIMATION CONFIGURATION - Cycle through multiple animations
+        const ANIMATION_CYCLE = [
+            'Flying',
+            'Attack_Breath',
+            'Roar',
+            'Attack_Left',
+            'Attack_Right',
+            'Idle'
+        ];
+        let currentAnimationIndex = 0;
         
         // CDN Configuration - Load from GitHub Releases
         // Automatically detect if we're in production (Railway) or local dev
@@ -374,99 +381,114 @@
         const tgaLoader = new TGALoader();
         manager.addHandler(/\.tga$/i, tgaLoader);
         
-        // Determine model URL (CDN proxy or local)
-        const modelFilename = `ANIM_Chinese_Dragon_${ANIMATION_FILE}.fbx`;
-        const modelUrl = USE_CDN 
-            ? `${CDN_BASE_URL}/${modelFilename}`
-            : `/assets/Style_one/${modelFilename}`;
-        
-        console.log('Loading model from:', modelUrl);
-        console.log('Using CDN:', USE_CDN);
-        
-        loader.load(
-            modelUrl,
-            (fbx) => {
-                model = fbx;
-                
-                // Center and scale the model
-                const box = new THREE.Box3().setFromObject(model);
-                const center = box.getCenter(new THREE.Vector3());
-                const size = box.getSize(new THREE.Vector3());
-                
-                console.log('Original model size:', size);
-                console.log('Original model center:', center);
-                
-                // Scale to a reasonable size (about 3 units tall)
-                const maxDim = Math.max(size.x, size.y, size.z);
-                const targetSize = 3;
-                const scale = targetSize / maxDim;
-                
-                model.scale.set(scale, scale, scale);
-                
-                // Position model so its center is at origin
-                model.position.x = -center.x * scale;
-                model.position.y = -center.y * scale;
-                model.position.z = -center.z * scale;
-                
-                console.log('Scale applied:', scale);
-                console.log('Model position:', model.position);
-                console.log('Camera position:', camera.position);
-
-                // Enable shadows and fix material issues
-                model.traverse((child) => {
-                    if (child.isMesh) {
-                        child.castShadow = true;
-                        child.receiveShadow = true;
-                        
-                        // Fix for models with inverted faces or transparency issues
-                        if (child.material) {
-                            child.material.side = THREE.DoubleSide; // Render both sides
-                            child.material.transparent = false;
-                            child.material.opacity = 1.0;
-                            child.material.depthWrite = true;
-                            child.material.depthTest = true;
-                        }
-                    }
-                });
-                
-                console.log('Model materials fixed for double-sided rendering');
-
-                scene.add(model);
-                
-                // Check for animations in FBX
-                if (fbx.animations && fbx.animations.length > 0) {
-                    mixer = new THREE.AnimationMixer(model);
-                    
-                    console.log(`Found ${fbx.animations.length} animation(s) in the FBX file:`);
-                    fbx.animations.forEach((clip, index) => {
-                        console.log(`  [${index}] "${clip.name}" (duration: ${clip.duration.toFixed(2)}s)`);
-                    });
-                    
-                    // Play all animations in the FBX file
-                    fbx.animations.forEach((clip) => {
-                        const action = mixer.clipAction(clip);
-                        action.play();
-                        console.log('▶ Playing:', clip.name);
-                    });
-                } else {
-                    console.log('No animations found in the FBX file');
+        // Function to load and play an animation
+        function loadAnimation(animationName) {
+            console.log(`Loading animation: ${animationName}`);
+            
+            const modelFilename = `ANIM_Chinese_Dragon_${animationName}.fbx`;
+            const modelUrl = USE_CDN 
+                ? `${CDN_BASE_URL}/${modelFilename}`
+                : `/assets/Style_one/${modelFilename}`;
+            
+            console.log('Loading from:', modelUrl);
+            
+            // Remove old model if exists
+            if (model) {
+                scene.remove(model);
+                if (mixer) {
+                    mixer.stopAllAction();
                 }
-                
-                // Hide loading
-                document.getElementById('loading').style.display = 'none';
-            },
-            (xhr) => {
-                const percent = (xhr.loaded / xhr.total) * 100;
-                console.log(percent + '% loaded');
-            },
-            (error) => {
-                console.error('Error loading model:', error);
-                document.getElementById('loading').style.display = 'none';
-                const errorDiv = document.getElementById('error');
-                errorDiv.textContent = 'Failed to load 3D model. Please check the console for details.';
-                errorDiv.style.display = 'block';
             }
-        );
+            
+            loader.load(
+                modelUrl,
+                (fbx) => {
+                    model = fbx;
+                    
+                    // Center and scale the model
+                    const box = new THREE.Box3().setFromObject(model);
+                    const center = box.getCenter(new THREE.Vector3());
+                    const size = box.getSize(new THREE.Vector3());
+                    
+                    const maxDim = Math.max(size.x, size.y, size.z);
+                    const targetSize = 3;
+                    const scale = targetSize / maxDim;
+                    
+                    model.scale.set(scale, scale, scale);
+                    model.position.x = -center.x * scale;
+                    model.position.y = -center.y * scale;
+                    model.position.z = -center.z * scale;
+
+                    // Enable shadows and fix materials
+                    model.traverse((child) => {
+                        if (child.isMesh) {
+                            child.castShadow = true;
+                            child.receiveShadow = true;
+                            
+                            if (child.material) {
+                                child.material.side = THREE.DoubleSide;
+                                child.material.transparent = false;
+                                child.material.opacity = 1.0;
+                                child.material.depthWrite = true;
+                                child.material.depthTest = true;
+                            }
+                        }
+                    });
+
+                    scene.add(model);
+                    
+                    // Setup animations
+                    if (fbx.animations && fbx.animations.length > 0) {
+                        mixer = new THREE.AnimationMixer(model);
+                        
+                        console.log(`Found ${fbx.animations.length} animation(s):`);
+                        fbx.animations.forEach((clip, index) => {
+                            console.log(`  [${index}] "${clip.name}" (duration: ${clip.duration.toFixed(2)}s)`);
+                            const action = mixer.clipAction(clip);
+                            action.setLoop(THREE.LoopOnce); // Play once
+                            action.clampWhenFinished = true; // Hold last frame
+                            action.play();
+                            
+                            // When animation finishes, load next one
+                            mixer.addEventListener('finished', () => {
+                                console.log('Animation finished, loading next...');
+                                currentAnimationIndex = (currentAnimationIndex + 1) % ANIMATION_CYCLE.length;
+                                setTimeout(() => {
+                                    loadAnimation(ANIMATION_CYCLE[currentAnimationIndex]);
+                                }, 1000); // 1 second pause between animations
+                            });
+                            
+                            console.log('▶ Playing:', clip.name);
+                        });
+                    } else {
+                        console.log('No animations found');
+                        // Load next animation anyway
+                        setTimeout(() => {
+                            currentAnimationIndex = (currentAnimationIndex + 1) % ANIMATION_CYCLE.length;
+                            loadAnimation(ANIMATION_CYCLE[currentAnimationIndex]);
+                        }, 3000);
+                    }
+                    
+                    document.getElementById('loading').style.display = 'none';
+                },
+                (xhr) => {
+                    const percent = (xhr.loaded / xhr.total) * 100;
+                    console.log(percent + '% loaded');
+                },
+                (error) => {
+                    console.error('Error loading model:', error);
+                    document.getElementById('loading').style.display = 'none';
+                    // Try next animation on error
+                    setTimeout(() => {
+                        currentAnimationIndex = (currentAnimationIndex + 1) % ANIMATION_CYCLE.length;
+                        loadAnimation(ANIMATION_CYCLE[currentAnimationIndex]);
+                    }, 2000);
+                }
+            );
+        }
+        
+        // Start with first animation
+        loadAnimation(ANIMATION_CYCLE[currentAnimationIndex]);
 
         // Animation loop
         function animate() {
