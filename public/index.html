@@ -392,21 +392,17 @@
             
             console.log('Loading from:', modelUrl);
             
-            // Remove old model if exists
-            if (model) {
-                scene.remove(model);
-                if (mixer) {
-                    mixer.stopAllAction();
-                }
-            }
+            // Keep old model visible while loading new one
+            const oldModel = model;
+            const oldMixer = mixer;
             
             loader.load(
                 modelUrl,
                 (fbx) => {
-                    model = fbx;
+                    const newModel = fbx;
                     
                     // Center and scale the model
-                    const box = new THREE.Box3().setFromObject(model);
+                    const box = new THREE.Box3().setFromObject(newModel);
                     const center = box.getCenter(new THREE.Vector3());
                     const size = box.getSize(new THREE.Vector3());
                     
@@ -414,13 +410,13 @@
                     const targetSize = 3;
                     const scale = targetSize / maxDim;
                     
-                    model.scale.set(scale, scale, scale);
-                    model.position.x = -center.x * scale;
-                    model.position.y = -center.y * scale;
-                    model.position.z = -center.z * scale;
+                    newModel.scale.set(scale, scale, scale);
+                    newModel.position.x = -center.x * scale;
+                    newModel.position.y = -center.y * scale;
+                    newModel.position.z = -center.z * scale;
 
                     // Enable shadows and fix materials
-                    model.traverse((child) => {
+                    newModel.traverse((child) => {
                         if (child.isMesh) {
                             child.castShadow = true;
                             child.receiveShadow = true;
@@ -435,11 +431,23 @@
                         }
                     });
 
-                    scene.add(model);
+                    // Add new model first
+                    scene.add(newModel);
+                    
+                    // Now remove old model (smooth transition)
+                    if (oldModel) {
+                        scene.remove(oldModel);
+                        if (oldMixer) {
+                            oldMixer.stopAllAction();
+                        }
+                    }
+                    
+                    // Update references to new model
+                    model = newModel;
                     
                     // Setup animations
                     if (fbx.animations && fbx.animations.length > 0) {
-                        mixer = new THREE.AnimationMixer(model);
+                        mixer = new THREE.AnimationMixer(newModel);
                         
                         console.log(`Found ${fbx.animations.length} animation(s):`);
                         fbx.animations.forEach((clip, index) => {
