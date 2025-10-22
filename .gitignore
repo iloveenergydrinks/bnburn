@@ -8,10 +8,3 @@ yarn-error.log*
 .vscode/
 .idea/
 
-# Large 3D model files (too big for GitHub)
-assets/Style_one/*.fbx
-assets/uploads_files_5116320_textures/*.tga
-assets/*.fbx
-assets/*.glb
-assets/*.tga
-

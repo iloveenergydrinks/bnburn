@@ -248,12 +248,10 @@
     <script type="module">
         import * as THREE from 'three';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-        import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
-        import { TGALoader } from 'three/addons/loaders/TGALoader.js';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-        // ANIMATION CONFIGURATION
-        // Option 1: Play all animations as-is
+        // MODEL CONFIGURATION
+        const USE_GLB = true; // Set to true for GLB (more reliable), false for FBX
         const ANIMATIONS_TO_PLAY = 'all';
         
         // Option 2: Split animation by time ranges (for showreel GLBs with multiple animations in one clip)
@@ -340,34 +338,17 @@
         rightLight.position.set(10, 5, 0);
         scene.add(rightLight);
 
-        // ANIMATION SELECTOR - Choose which animation to display
-        const ANIMATION_FILE = 'Flying'; // Options: Flying, Idle, Roar, Attack_Breath, Attack_Left, Attack_Right, Attack_Tail, Bite, Knockout, Torando
-        
-        // Load FBX model with animation
-        const manager = new THREE.LoadingManager();
-        manager.setURLModifier((url) => {
-            // Redirect texture paths to correct location
-            if (url.includes('.tga')) {
-                const filename = url.split('/').pop().replace('..\\', '').replace('../', '');
-                return `/assets/uploads_files_5116320_textures/${filename}`;
-            }
-            return url;
-        });
-        
-        const loader = new FBXLoader(manager);
-        
-        // Add TGA loader support for textures
-        const tgaLoader = new TGALoader();
-        manager.addHandler(/\.tga$/i, tgaLoader);
-        
         let model = null;
         let mixer = null;
         const clock = new THREE.Clock();
 
+        // Load model (GLB is more reliable for web)
+        const loader = new GLTFLoader();
+        
         loader.load(
-            `/assets/Style_one/ANIM_Chinese_Dragon_${ANIMATION_FILE}.fbx`,
-            (fbx) => {
-                model = fbx;
+            '/assets/chinese_dragon.glb',
+            (gltf) => {
+                model = gltf.scene;
                 
                 // Center and scale the model
                 const box = new THREE.Box3().setFromObject(model);
@@ -414,23 +395,23 @@
 
                 scene.add(model);
                 
-                // Check for animations in FBX
-                if (fbx.animations && fbx.animations.length > 0) {
+                // Check for animations
+                if (gltf.animations && gltf.animations.length > 0) {
                     mixer = new THREE.AnimationMixer(model);
                     
-                    console.log(`Found ${fbx.animations.length} animation(s) in the FBX file:`);
-                    fbx.animations.forEach((clip, index) => {
+                    console.log(`Found ${gltf.animations.length} animation(s):`);
+                    gltf.animations.forEach((clip, index) => {
                         console.log(`  [${index}] "${clip.name}" (duration: ${clip.duration.toFixed(2)}s)`);
                     });
                     
-                    // Play all animations in the FBX file
-                    fbx.animations.forEach((clip) => {
+                    // Play all animations
+                    gltf.animations.forEach((clip) => {
                         const action = mixer.clipAction(clip);
                         action.play();
                         console.log('▶ Playing:', clip.name);
                     });
                 } else {
-                    console.log('No animations found in the FBX file');
+                    console.log('No animations found');
                 }
                 
                 // Hide loading
