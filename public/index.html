@@ -276,15 +276,9 @@
         import { TGALoader } from 'three/addons/loaders/TGALoader.js';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-        // ANIMATION CONFIGURATION - Only use animations uploaded to GitHub Release v1
-        const ANIMATION_CYCLE = [
-            'Flying',        // Load first
-            'Attack_Breath',
-            'Attack_Left',
-            'Attack_Right'
-        ];
+        // ANIMATION CONFIGURATION - Only one animation for simplicity
+        const ANIMATION_FILE = 'Flying'; // Just use Flying animation
         let currentAnimationIndex = 0;
-        let isFirstAnimationShown = false;
         
         // CDN Configuration - Load from GitHub Releases
         // Automatically detect if we're in production (Railway) or local dev
@@ -379,14 +373,9 @@
         rightLight.position.set(10, 5, 0);
         scene.add(rightLight);
 
-        let currentModel = null;
-        let currentMixer = null;
+        let model = null;
+        let mixer = null;
         const clock = new THREE.Clock();
-        
-        // Preloaded models and mixers storage
-        const preloadedModels = {};
-        const preloadedMixers = {};
-        let modelsLoaded = 0;
 
         // Load FBX model with animation
         const manager = new THREE.LoadingManager();
@@ -409,192 +398,90 @@
         const tgaLoader = new TGALoader();
         manager.addHandler(/\.tga$/i, tgaLoader);
         
-        // Preload all animations at startup
-        function preloadAllAnimations() {
-            console.log('🔄 Preloading animations...');
-            
-            ANIMATION_CYCLE.forEach((animName, index) => {
-                const modelFilename = `ANIM_Chinese_Dragon_${animName}.fbx`;
-                const modelUrl = USE_CDN 
-                    ? `${CDN_BASE_URL}/${modelFilename}`
-                    : `/assets/Style_one/${modelFilename}`;
+        // Load single animation
+        const modelFilename = `ANIM_Chinese_Dragon_${ANIMATION_FILE}.fbx`;
+        const modelUrl = USE_CDN 
+            ? `${CDN_BASE_URL}/${modelFilename}`
+            : `/assets/Style_one/${modelFilename}`;
+        
+        console.log('Loading model:', modelUrl);
+        
+        loader.load(
+            modelUrl,
+            (fbx) => {
+                model = fbx;
                 
-                // Show loading message only before first animation
-                if (!isFirstAnimationShown) {
-                    document.getElementById('loading-text').textContent = `加载 ${animName}...`;
-                }
+                // Center and scale the model
+                const box = new THREE.Box3().setFromObject(model);
+                const center = box.getCenter(new THREE.Vector3());
+                const size = box.getSize(new THREE.Vector3());
                 
-                console.log(`${index === 0 ? '⚡' : '🔄'} Loading ${index + 1}/${ANIMATION_CYCLE.length}: ${animName} ${index === 0 ? '(showing immediately)' : '(background)'}`);
+                const maxDim = Math.max(size.x, size.y, size.z);
+                const targetSize = 3;
+                const scale = targetSize / maxDim;
                 
-                // Set timeout for loading (30 seconds max)
-                const loadTimeout = setTimeout(() => {
-                    console.warn(`⏱️ Timeout loading ${animName}, marking as failed`);
-                    modelsLoaded++;
-                    if (modelsLoaded === ANIMATION_CYCLE.length && !isFirstAnimationShown) {
-                        document.getElementById('loading').style.display = 'none';
-                        console.log('Loading complete (some animations failed)');
-                    }
-                }, 30000);
-                
-                loader.load(
-                    modelUrl,
-                    (fbx) => {
-                        clearTimeout(loadTimeout);
-                    
-                        // Center and scale the model
-                        const box = new THREE.Box3().setFromObject(fbx);
-                        const center = box.getCenter(new THREE.Vector3());
-                        const size = box.getSize(new THREE.Vector3());
-                        
-                        const maxDim = Math.max(size.x, size.y, size.z);
-                        const targetSize = 3;
-                        const scale = targetSize / maxDim;
-                        
-                        fbx.scale.set(scale, scale, scale);
-                        fbx.position.x = -center.x * scale;
-                        fbx.position.y = -center.y * scale;
-                        fbx.position.z = -center.z * scale;
+                model.scale.set(scale, scale, scale);
+                model.position.x = -center.x * scale;
+                model.position.y = -center.y * scale;
+                model.position.z = -center.z * scale;
 
-                        // Enable shadows and fix materials
-                        fbx.traverse((child) => {
-                            if (child.isMesh) {
-                                child.castShadow = true;
-                                child.receiveShadow = true;
-                                
-                                if (child.material) {
-                                    child.material.side = THREE.DoubleSide;
-                                    child.material.transparent = false;
-                                    child.material.opacity = 1.0;
-                                    child.material.depthWrite = true;
-                                    child.material.depthTest = true;
-                                }
-                            }
-                        });
-
-                        // Store preloaded model
-                        preloadedModels[animName] = fbx;
+                // Enable shadows and fix materials
+                model.traverse((child) => {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
                         
-                        // Setup mixer
-                        if (fbx.animations && fbx.animations.length > 0) {
-                            const mixer = new THREE.AnimationMixer(fbx);
-                            preloadedMixers[animName] = mixer;
-                            console.log(`✓ Loaded: ${animName} (${fbx.animations[0].duration.toFixed(2)}s)`);
-                        }
-                        
-                        modelsLoaded++;
-                        
-                        // Show first animation immediately
-                        if (!isFirstAnimationShown && animName === ANIMATION_CYCLE[0]) {
-                            console.log('⚡ Showing first animation immediately!');
-                            document.getElementById('loading').style.display = 'none';
-                            isFirstAnimationShown = true;
-                            playAnimation(animName);
-                        }
-                        
-                        // All models loaded?
-                        if (modelsLoaded === ANIMATION_CYCLE.length) {
-                            console.log('✅ All animations preloaded - ready for smooth cycling!');
-                        }
-                    },
-                    (xhr) => {
-                        const percent = (xhr.loaded / xhr.total) * 100;
-                        const overall = ((index + (xhr.loaded / xhr.total)) / ANIMATION_CYCLE.length) * 100;
-                        
-                        // Update loading progress for first animation only
-                        if (index === 0 && !isFirstAnimationShown) {
-                            document.getElementById('loading-progress').textContent = `${percent.toFixed(0)}%`;
-                            document.getElementById('loading-bar').style.width = `${percent}%`;
-                        }
-                        
-                        console.log(`${animName}: ${percent.toFixed(0)}% | Overall: ${overall.toFixed(0)}%`);
-                    },
-                    (error) => {
-                        clearTimeout(loadTimeout);
-                        console.error(`Error preloading ${animName}:`, error);
-                        modelsLoaded++;
-                        
-                        // If first animation fails, try next one
-                        if (index === 0 && !isFirstAnimationShown && modelsLoaded < ANIMATION_CYCLE.length) {
-                            console.log('First animation failed, trying next...');
-                            document.getElementById('loading-text').textContent = `🐉 加载下一个... 0%`;
-                        }
-                        
-                        if (modelsLoaded === ANIMATION_CYCLE.length) {
-                            document.getElementById('loading').style.display = 'none';
-                            // Find first successfully loaded animation
-                            for (let i = 0; i < ANIMATION_CYCLE.length; i++) {
-                                if (preloadedModels[ANIMATION_CYCLE[i]]) {
-                                    currentAnimationIndex = i;
-                                    playAnimation(ANIMATION_CYCLE[i]);
-                                    break;
-                                }
-                            }
+                        if (child.material) {
+                            child.material.side = THREE.DoubleSide;
+                            child.material.transparent = false;
+                            child.material.opacity = 1.0;
+                            child.material.depthWrite = true;
+                            child.material.depthTest = true;
                         }
                     }
-                );
-            });
-        }
-        
-        // Switch to and play an animation (instant - no loading!)
-        function playAnimation(animationName) {
-            console.log(`▶ Playing animation: ${animationName}`);
-            
-            // Hide current model
-            if (currentModel) {
-                scene.remove(currentModel);
-                if (currentMixer) {
-                    currentMixer.stopAllAction();
-                }
-            }
-            
-            // Show new model
-            const newModel = preloadedModels[animationName];
-            const newMixer = preloadedMixers[animationName];
-            
-            if (!newModel) {
-                console.error(`Model ${animationName} not preloaded`);
-                return;
-            }
-            
-            scene.add(newModel);
-            currentModel = newModel;
-            currentMixer = newMixer;
-            
-            // Play animation
-            if (newMixer && newModel.animations && newModel.animations.length > 0) {
-                const clip = newModel.animations[0];
-                const action = newMixer.clipAction(clip);
-                action.reset();
-                action.setLoop(THREE.LoopOnce);
-                action.clampWhenFinished = true;
-                action.play();
+                });
+
+                scene.add(model);
                 
-                // When animation finishes, play next one
-                const onFinished = () => {
-                    console.log('Animation finished, switching to next...');
-                    newMixer.removeEventListener('finished', onFinished);
+                // Setup animation
+                if (fbx.animations && fbx.animations.length > 0) {
+                    mixer = new THREE.AnimationMixer(model);
                     
-                    setTimeout(() => {
-                        currentAnimationIndex = (currentAnimationIndex + 1) % ANIMATION_CYCLE.length;
-                        playAnimation(ANIMATION_CYCLE[currentAnimationIndex]);
-                    }, 500); // Short pause between animations
-                };
+                    console.log(`Found ${fbx.animations.length} animation(s)`);
+                    fbx.animations.forEach((clip) => {
+                        const action = mixer.clipAction(clip);
+                        action.play();
+                        console.log('▶ Playing:', clip.name);
+                    });
+                }
                 
-                newMixer.addEventListener('finished', onFinished);
+                // Hide loading
+                document.getElementById('loading').style.display = 'none';
+                console.log('✅ Dragon loaded!');
+            },
+            (xhr) => {
+                const percent = (xhr.loaded / xhr.total) * 100;
+                document.getElementById('loading-progress').textContent = `${percent.toFixed(0)}%`;
+                document.getElementById('loading-bar').style.width = `${percent}%`;
+                console.log(`Loading: ${percent.toFixed(0)}%`);
+            },
+            (error) => {
+                console.error('Error loading model:', error);
+                document.getElementById('loading').style.display = 'none';
+                const errorDiv = document.getElementById('error');
+                errorDiv.textContent = 'Failed to load dragon. Please refresh the page.';
+                errorDiv.style.display = 'block';
             }
-        }
-        
-        // Start preloading all animations
-        preloadAllAnimations();
+        );
 
         // Animation loop
         function animate() {
             requestAnimationFrame(animate);
             
-            // Update current animation mixer
-            if (currentMixer) {
+            // Update animation mixer
+            if (mixer) {
                 const delta = clock.getDelta();
-                currentMixer.update(delta);
+                mixer.update(delta);
             }
             
             controls.update();
