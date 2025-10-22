@@ -254,14 +254,15 @@
 
         // ANIMATION CONFIGURATION - Cycle through multiple animations
         const ANIMATION_CYCLE = [
+            'Idle',         // Load first - smallest/fastest
             'Flying',
             'Attack_Breath',
-            'Roar',
             'Attack_Left',
             'Attack_Right',
-            'Idle'
+            'Bite'
         ];
         let currentAnimationIndex = 0;
+        let isFirstAnimationShown = false;
         
         // CDN Configuration - Load from GitHub Releases
         // Automatically detect if we're in production (Railway) or local dev
@@ -388,8 +389,7 @@
         
         // Preload all animations at startup
         function preloadAllAnimations() {
-            console.log('🔄 Preloading all animations...');
-            document.getElementById('loading').querySelector('p').textContent = 'Preloading animations...';
+            console.log('🔄 Preloading animations...');
             
             ANIMATION_CYCLE.forEach((animName, index) => {
                 const modelFilename = `ANIM_Chinese_Dragon_${animName}.fbx`;
@@ -397,7 +397,12 @@
                     ? `${CDN_BASE_URL}/${modelFilename}`
                     : `/assets/Style_one/${modelFilename}`;
                 
-                console.log(`Preloading ${index + 1}/${ANIMATION_CYCLE.length}: ${animName}`);
+                // Show loading message only before first animation
+                if (!isFirstAnimationShown) {
+                    document.getElementById('loading').querySelector('p').textContent = `Loading ${animName}...`;
+                }
+                
+                console.log(`${index === 0 ? '⚡' : '🔄'} Loading ${index + 1}/${ANIMATION_CYCLE.length}: ${animName} ${index === 0 ? '(showing immediately)' : '(background)'}`);
                 
                 loader.load(
                     modelUrl,
@@ -440,16 +445,22 @@
                         if (fbx.animations && fbx.animations.length > 0) {
                             const mixer = new THREE.AnimationMixer(fbx);
                             preloadedMixers[animName] = mixer;
-                            console.log(`✓ Preloaded: ${animName} (${fbx.animations[0].duration.toFixed(2)}s)`);
+                            console.log(`✓ Loaded: ${animName} (${fbx.animations[0].duration.toFixed(2)}s)`);
                         }
                         
                         modelsLoaded++;
                         
+                        // Show first animation immediately
+                        if (!isFirstAnimationShown && animName === ANIMATION_CYCLE[0]) {
+                            console.log('⚡ Showing first animation immediately!');
+                            document.getElementById('loading').style.display = 'none';
+                            isFirstAnimationShown = true;
+                            playAnimation(animName);
+                        }
+                        
                         // All models loaded?
                         if (modelsLoaded === ANIMATION_CYCLE.length) {
-                            console.log('✅ All animations preloaded!');
-                            document.getElementById('loading').style.display = 'none';
-                            playAnimation(ANIMATION_CYCLE[currentAnimationIndex]);
+                            console.log('✅ All animations preloaded - ready for smooth cycling!');
                         }
                     },
                     (xhr) => {
