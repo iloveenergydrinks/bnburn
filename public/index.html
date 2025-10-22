@@ -356,9 +356,14 @@
         rightLight.position.set(10, 5, 0);
         scene.add(rightLight);
 
-        let model = null;
-        let mixer = null;
+        let currentModel = null;
+        let currentMixer = null;
         const clock = new THREE.Clock();
+        
+        // Preloaded models and mixers storage
+        const preloadedModels = {};
+        const preloadedMixers = {};
+        let modelsLoaded = 0;
 
         // Load FBX model with animation
         const manager = new THREE.LoadingManager();
@@ -381,131 +386,149 @@
         const tgaLoader = new TGALoader();
         manager.addHandler(/\.tga$/i, tgaLoader);
         
-        // Function to load and play an animation
-        function loadAnimation(animationName) {
-            console.log(`Loading animation: ${animationName}`);
+        // Preload all animations at startup
+        function preloadAllAnimations() {
+            console.log('🔄 Preloading all animations...');
+            document.getElementById('loading').querySelector('p').textContent = 'Preloading animations...';
             
-            const modelFilename = `ANIM_Chinese_Dragon_${animationName}.fbx`;
-            const modelUrl = USE_CDN 
-                ? `${CDN_BASE_URL}/${modelFilename}`
-                : `/assets/Style_one/${modelFilename}`;
-            
-            console.log('Loading from:', modelUrl);
-            
-            // Keep old model visible while loading new one
-            const oldModel = model;
-            const oldMixer = mixer;
-            
-            loader.load(
-                modelUrl,
-                (fbx) => {
-                    const newModel = fbx;
+            ANIMATION_CYCLE.forEach((animName, index) => {
+                const modelFilename = `ANIM_Chinese_Dragon_${animName}.fbx`;
+                const modelUrl = USE_CDN 
+                    ? `${CDN_BASE_URL}/${modelFilename}`
+                    : `/assets/Style_one/${modelFilename}`;
+                
+                console.log(`Preloading ${index + 1}/${ANIMATION_CYCLE.length}: ${animName}`);
+                
+                loader.load(
+                    modelUrl,
+                    (fbx) => {
                     
-                    // Center and scale the model
-                    const box = new THREE.Box3().setFromObject(newModel);
-                    const center = box.getCenter(new THREE.Vector3());
-                    const size = box.getSize(new THREE.Vector3());
-                    
-                    const maxDim = Math.max(size.x, size.y, size.z);
-                    const targetSize = 3;
-                    const scale = targetSize / maxDim;
-                    
-                    newModel.scale.set(scale, scale, scale);
-                    newModel.position.x = -center.x * scale;
-                    newModel.position.y = -center.y * scale;
-                    newModel.position.z = -center.z * scale;
-
-                    // Enable shadows and fix materials
-                    newModel.traverse((child) => {
-                        if (child.isMesh) {
-                            child.castShadow = true;
-                            child.receiveShadow = true;
-                            
-                            if (child.material) {
-                                child.material.side = THREE.DoubleSide;
-                                child.material.transparent = false;
-                                child.material.opacity = 1.0;
-                                child.material.depthWrite = true;
-                                child.material.depthTest = true;
-                            }
-                        }
-                    });
-
-                    // Add new model first
-                    scene.add(newModel);
-                    
-                    // Now remove old model (smooth transition)
-                    if (oldModel) {
-                        scene.remove(oldModel);
-                        if (oldMixer) {
-                            oldMixer.stopAllAction();
-                        }
-                    }
-                    
-                    // Update references to new model
-                    model = newModel;
-                    
-                    // Setup animations
-                    if (fbx.animations && fbx.animations.length > 0) {
-                        mixer = new THREE.AnimationMixer(newModel);
+                        // Center and scale the model
+                        const box = new THREE.Box3().setFromObject(fbx);
+                        const center = box.getCenter(new THREE.Vector3());
+                        const size = box.getSize(new THREE.Vector3());
                         
-                        console.log(`Found ${fbx.animations.length} animation(s):`);
-                        fbx.animations.forEach((clip, index) => {
-                            console.log(`  [${index}] "${clip.name}" (duration: ${clip.duration.toFixed(2)}s)`);
-                            const action = mixer.clipAction(clip);
-                            action.setLoop(THREE.LoopOnce); // Play once
-                            action.clampWhenFinished = true; // Hold last frame
-                            action.play();
-                            
-                            // When animation finishes, load next one
-                            mixer.addEventListener('finished', () => {
-                                console.log('Animation finished, loading next...');
-                                currentAnimationIndex = (currentAnimationIndex + 1) % ANIMATION_CYCLE.length;
-                                setTimeout(() => {
-                                    loadAnimation(ANIMATION_CYCLE[currentAnimationIndex]);
-                                }, 1000); // 1 second pause between animations
-                            });
-                            
-                            console.log('▶ Playing:', clip.name);
+                        const maxDim = Math.max(size.x, size.y, size.z);
+                        const targetSize = 3;
+                        const scale = targetSize / maxDim;
+                        
+                        fbx.scale.set(scale, scale, scale);
+                        fbx.position.x = -center.x * scale;
+                        fbx.position.y = -center.y * scale;
+                        fbx.position.z = -center.z * scale;
+
+                        // Enable shadows and fix materials
+                        fbx.traverse((child) => {
+                            if (child.isMesh) {
+                                child.castShadow = true;
+                                child.receiveShadow = true;
+                                
+                                if (child.material) {
+                                    child.material.side = THREE.DoubleSide;
+                                    child.material.transparent = false;
+                                    child.material.opacity = 1.0;
+                                    child.material.depthWrite = true;
+                                    child.material.depthTest = true;
+                                }
+                            }
                         });
-                    } else {
-                        console.log('No animations found');
-                        // Load next animation anyway
-                        setTimeout(() => {
-                            currentAnimationIndex = (currentAnimationIndex + 1) % ANIMATION_CYCLE.length;
-                            loadAnimation(ANIMATION_CYCLE[currentAnimationIndex]);
-                        }, 3000);
+
+                        // Store preloaded model
+                        preloadedModels[animName] = fbx;
+                        
+                        // Setup mixer
+                        if (fbx.animations && fbx.animations.length > 0) {
+                            const mixer = new THREE.AnimationMixer(fbx);
+                            preloadedMixers[animName] = mixer;
+                            console.log(`✓ Preloaded: ${animName} (${fbx.animations[0].duration.toFixed(2)}s)`);
+                        }
+                        
+                        modelsLoaded++;
+                        
+                        // All models loaded?
+                        if (modelsLoaded === ANIMATION_CYCLE.length) {
+                            console.log('✅ All animations preloaded!');
+                            document.getElementById('loading').style.display = 'none';
+                            playAnimation(ANIMATION_CYCLE[currentAnimationIndex]);
+                        }
+                    },
+                    (xhr) => {
+                        const percent = (xhr.loaded / xhr.total) * 100;
+                        const overall = ((index + (xhr.loaded / xhr.total)) / ANIMATION_CYCLE.length) * 100;
+                        console.log(`${animName}: ${percent.toFixed(0)}% | Overall: ${overall.toFixed(0)}%`);
+                    },
+                    (error) => {
+                        console.error(`Error preloading ${animName}:`, error);
+                        modelsLoaded++;
+                        if (modelsLoaded === ANIMATION_CYCLE.length) {
+                            document.getElementById('loading').style.display = 'none';
+                            playAnimation(ANIMATION_CYCLE[currentAnimationIndex]);
+                        }
                     }
-                    
-                    document.getElementById('loading').style.display = 'none';
-                },
-                (xhr) => {
-                    const percent = (xhr.loaded / xhr.total) * 100;
-                    console.log(percent + '% loaded');
-                },
-                (error) => {
-                    console.error('Error loading model:', error);
-                    document.getElementById('loading').style.display = 'none';
-                    // Try next animation on error
-                    setTimeout(() => {
-                        currentAnimationIndex = (currentAnimationIndex + 1) % ANIMATION_CYCLE.length;
-                        loadAnimation(ANIMATION_CYCLE[currentAnimationIndex]);
-                    }, 2000);
-                }
-            );
+                );
+            });
         }
         
-        // Start with first animation
-        loadAnimation(ANIMATION_CYCLE[currentAnimationIndex]);
+        // Switch to and play an animation (instant - no loading!)
+        function playAnimation(animationName) {
+            console.log(`▶ Playing animation: ${animationName}`);
+            
+            // Hide current model
+            if (currentModel) {
+                scene.remove(currentModel);
+                if (currentMixer) {
+                    currentMixer.stopAllAction();
+                }
+            }
+            
+            // Show new model
+            const newModel = preloadedModels[animationName];
+            const newMixer = preloadedMixers[animationName];
+            
+            if (!newModel) {
+                console.error(`Model ${animationName} not preloaded`);
+                return;
+            }
+            
+            scene.add(newModel);
+            currentModel = newModel;
+            currentMixer = newMixer;
+            
+            // Play animation
+            if (newMixer && newModel.animations && newModel.animations.length > 0) {
+                const clip = newModel.animations[0];
+                const action = newMixer.clipAction(clip);
+                action.reset();
+                action.setLoop(THREE.LoopOnce);
+                action.clampWhenFinished = true;
+                action.play();
+                
+                // When animation finishes, play next one
+                const onFinished = () => {
+                    console.log('Animation finished, switching to next...');
+                    newMixer.removeEventListener('finished', onFinished);
+                    
+                    setTimeout(() => {
+                        currentAnimationIndex = (currentAnimationIndex + 1) % ANIMATION_CYCLE.length;
+                        playAnimation(ANIMATION_CYCLE[currentAnimationIndex]);
+                    }, 500); // Short pause between animations
+                };
+                
+                newMixer.addEventListener('finished', onFinished);
+            }
+        }
+        
+        // Start preloading all animations
+        preloadAllAnimations();
 
         // Animation loop
         function animate() {
             requestAnimationFrame(animate);
             
-            // Update animation mixer
-            if (mixer) {
+            // Update current animation mixer
+            if (currentMixer) {
                 const delta = clock.getDelta();
-                mixer.update(delta);
+                currentMixer.update(delta);
             }
             
             controls.update();
