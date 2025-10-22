@@ -427,9 +427,20 @@
                 
                 console.log(`${index === 0 ? '⚡' : '🔄'} Loading ${index + 1}/${ANIMATION_CYCLE.length}: ${animName} ${index === 0 ? '(showing immediately)' : '(background)'}`);
                 
+                // Set timeout for loading (30 seconds max)
+                const loadTimeout = setTimeout(() => {
+                    console.warn(`⏱️ Timeout loading ${animName}, marking as failed`);
+                    modelsLoaded++;
+                    if (modelsLoaded === ANIMATION_CYCLE.length && !isFirstAnimationShown) {
+                        document.getElementById('loading').style.display = 'none';
+                        console.log('Loading complete (some animations failed)');
+                    }
+                }, 30000);
+                
                 loader.load(
                     modelUrl,
                     (fbx) => {
+                        clearTimeout(loadTimeout);
                     
                         // Center and scale the model
                         const box = new THREE.Box3().setFromObject(fbx);
@@ -499,11 +510,26 @@
                         console.log(`${animName}: ${percent.toFixed(0)}% | Overall: ${overall.toFixed(0)}%`);
                     },
                     (error) => {
+                        clearTimeout(loadTimeout);
                         console.error(`Error preloading ${animName}:`, error);
                         modelsLoaded++;
+                        
+                        // If first animation fails, try next one
+                        if (index === 0 && !isFirstAnimationShown && modelsLoaded < ANIMATION_CYCLE.length) {
+                            console.log('First animation failed, trying next...');
+                            document.getElementById('loading-text').textContent = `🐉 加载下一个... 0%`;
+                        }
+                        
                         if (modelsLoaded === ANIMATION_CYCLE.length) {
                             document.getElementById('loading').style.display = 'none';
-                            playAnimation(ANIMATION_CYCLE[currentAnimationIndex]);
+                            // Find first successfully loaded animation
+                            for (let i = 0; i < ANIMATION_CYCLE.length; i++) {
+                                if (preloadedModels[ANIMATION_CYCLE[i]]) {
+                                    currentAnimationIndex = i;
+                                    playAnimation(ANIMATION_CYCLE[i]);
+                                    break;
+                                }
+                            }
                         }
                     }
                 );
