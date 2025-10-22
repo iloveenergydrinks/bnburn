@@ -83,6 +83,27 @@ app.get('/api/token-stats', async (req, res) => {
     }
 });
 
+// Model proxy to bypass CORS for GitHub Releases
+app.get('/api/model-proxy/:filename', async (req, res) => {
+    try {
+        const fetch = (await import('node-fetch')).default;
+        const filename = req.params.filename;
+        const githubUrl = `https://github.com/iloveenergydrinks/bnburn/releases/download/v1/${filename}`;
+        
+        console.log('Proxying model:', githubUrl);
+        
+        const response = await fetch(githubUrl);
+        const buffer = await response.buffer();
+        
+        res.set('Content-Type', 'application/octet-stream');
+        res.set('Access-Control-Allow-Origin', '*');
+        res.send(buffer);
+    } catch (error) {
+        console.error('Model proxy error:', error);
+        res.status(500).send('Error fetching model');
+    }
+});
+
 // Main route
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));

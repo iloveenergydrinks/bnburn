@@ -257,8 +257,13 @@
         const ANIMATIONS_TO_PLAY = 'all';
         
         // CDN Configuration - Load from GitHub Releases
-        const USE_CDN = true; // Set to false to use local files
-        const CDN_BASE_URL = 'https://github.com/iloveenergydrinks/bnburn/releases/download/v1';
+        // Automatically detect if we're in production (Railway) or local dev
+        const isProduction = window.location.hostname.includes('railway.app');
+        const USE_CDN = isProduction; // Use CDN proxy in production, local files in dev
+        const CDN_BASE_URL = window.location.origin + '/api/model-proxy'; // Server will proxy GitHub releases
+        
+        console.log('Environment:', isProduction ? 'Production (Railway)' : 'Local Development');
+        console.log('Will use:', USE_CDN ? 'CDN (GitHub Releases via proxy)' : 'Local files');
         
         // Option 2: Split animation by time ranges (for showreel GLBs with multiple animations in one clip)
         // Set to null to disable, or define time ranges like this:
@@ -369,12 +374,14 @@
         const tgaLoader = new TGALoader();
         manager.addHandler(/\.tga$/i, tgaLoader);
         
-        // Determine model URL (CDN or local)
+        // Determine model URL (CDN proxy or local)
+        const modelFilename = `ANIM_Chinese_Dragon_${ANIMATION_FILE}.fbx`;
         const modelUrl = USE_CDN 
-            ? `${CDN_BASE_URL}/ANIM_Chinese_Dragon_${ANIMATION_FILE}.fbx`
-            : `/assets/Style_one/ANIM_Chinese_Dragon_${ANIMATION_FILE}.fbx`;
+            ? `${CDN_BASE_URL}/${modelFilename}`
+            : `/assets/Style_one/${modelFilename}`;
         
         console.log('Loading model from:', modelUrl);
+        console.log('Using CDN:', USE_CDN);
         
         loader.load(
             modelUrl,
