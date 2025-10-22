@@ -46,39 +46,50 @@ http://localhost:3000
 
 ## Deploying to Railway
 
-### Option 1: Railway CLI
+⚠️ **Important: Git LFS Files on Railway**
+
+Railway cannot access Git LFS files during build (no `.git` folder in Docker build context). You have **two options**:
+
+### Option A: Deploy from Local Directory (Recommended)
 
 1. Install Railway CLI:
 ```bash
 npm install -g @railway/cli
 ```
 
-2. Login to Railway:
+2. Login and deploy from your local directory (includes actual model files):
 ```bash
 railway login
-```
-
-3. Initialize and deploy:
-```bash
 railway init
 railway up
 ```
 
-### Option 2: Railway Dashboard
+This uploads your actual local files including the large FBX/TGA models.
+
+### Option B: Host Model Files on CDN
+
+1. Upload your model files to a CDN (AWS S3, Cloudflare R2, etc.)
+2. Update `public/index.html` line 365 to use CDN URL:
+```javascript
+loader.load(
+    'https://your-cdn.com/ANIM_Chinese_Dragon_Flying.fbx',
+```
+3. Deploy from GitHub normally
+
+### Railway Dashboard Deployment:
 
 1. Go to [Railway.app](https://railway.app)
-2. Click "New Project"
-3. Select "Deploy from GitHub repo" (or use "Deploy from local directory")
-4. Connect your repository
-5. Railway will automatically detect the Node.js project and deploy it
-6. Your app will be available at the provided Railway URL
+2. Click "New Project" → "Deploy from GitHub repo"
+3. Connect `iloveenergydrinks/bnburn`
+4. **If using Option B**, add environment variable for CDN URL
+5. Deploy!
 
-### Important Notes for Railway:
+### Important Notes:
 
 - The `PORT` environment variable is automatically set by Railway
-- The `package.json` includes the required `engines` field
-- The start script is configured for production deployment
-- No Procfile needed - Railway auto-detects Node.js apps
+- Both API server and web server run on the same port
+- `nixpacks.toml` configures the build process
+- Model files are tracked with Git LFS but won't deploy via GitHub → Railway flow
 
 ## Project Structure
 
@@ -120,4 +131,5 @@ If the model doesn't load:
 ## License
 
 MIT
+
 
