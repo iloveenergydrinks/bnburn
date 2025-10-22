@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>燃烧
+    </title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        @import url('https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@700;900&display=swap');
+
+        body {
+            font-family: 'Noto Serif SC', serif;
+            background: linear-gradient(135deg, #8B0000 0%, #DC143C 50%, #8B0000 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+            overflow-x: hidden;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            min-height: 100vh;
+            position: relative;
+            padding: 20px 0;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                radial-gradient(circle at 20% 30%, rgba(255, 215, 0, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(255, 215, 0, 0.1) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        #container {
+            width: 100vw;
+            min-height: 100vh;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding-bottom: 50px;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 70vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #burn-text {
+            font-family: 'Ma Shan Zheng', cursive;
+            font-size: 140px;
+            font-weight: 900;
+            background: linear-gradient(45deg, #FFD700, #FFA500, #FFD700, #FF6347);
+            background-size: 300% 300%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-align: center;
+            margin-top: 20px;
+            letter-spacing: 30px;
+            text-shadow: 0 0 40px rgba(255, 215, 0, 0.8);
+            filter: drop-shadow(0 0 30px rgba(255, 215, 0, 0.6)) 
+                    drop-shadow(0 0 60px rgba(255, 100, 0, 0.4));
+            animation: shimmer 3s ease-in-out infinite, float 4s ease-in-out infinite;
+            position: relative;
+        }
+
+        @keyframes shimmer {
+            0%, 100% { filter: brightness(1) drop-shadow(0 0 30px rgba(255, 215, 0, 0.8)); }
+            50% { filter: brightness(1.3) drop-shadow(0 0 50px rgba(255, 215, 0, 1)); }
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        /* Lucky symbols decoration */
+        .lucky-symbols {
+            position: absolute;
+            font-size: 48px;
+            opacity: 0.3;
+            color: #FFD700;
+            animation: pulse 3s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.1); }
+        }
+
+        .symbol-top-left { top: 5%; left: 5%; }
+        .symbol-top-right { top: 5%; right: 5%; }
+        .symbol-bottom-left { bottom: 15%; left: 5%; }
+        .symbol-bottom-right { bottom: 15%; right: 5%; }
+
+        /* Token Stats - Vertical below text */
+        #token-stats {
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            align-items: flex-start;
+            margin-top: 30px;
+            gap: 40px;
+            z-index: 100;
+        }
+
+        .stat-item {
+            font-family: 'Noto Serif SC', serif;
+            writing-mode: vertical-rl;
+            text-orientation: upright;
+            font-size: 24px;
+            color: #FFD700;
+            text-shadow: 0 0 15px rgba(255, 215, 0, 0.8),
+                         0 0 30px rgba(255, 165, 0, 0.5);
+            font-weight: bold;
+            letter-spacing: 8px;
+            animation: glow 2s ease-in-out infinite;
+            text-align: center;
+            line-height: 1.5;
+        }
+
+        .stat-value {
+            color: #FFF;
+            font-size: 22px;
+            font-family: 'Courier New', monospace;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
+        }
+
+        @keyframes glow {
+            0%, 100% { 
+                text-shadow: 0 0 15px rgba(255, 215, 0, 0.8),
+                             0 0 30px rgba(255, 165, 0, 0.5);
+            }
+            50% { 
+                text-shadow: 0 0 25px rgba(255, 215, 0, 1),
+                             0 0 50px rgba(255, 165, 0, 0.8);
+            }
+        }
+
+
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 24px;
+            text-align: center;
+            z-index: 10;
+        }
+
+        .loader {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+
+        #error {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 18px;
+            text-align: center;
+            background: rgba(255, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="loading">
+            <div class="loader"></div>
+            <p>Loading 3D Model...</p>
+        </div>
+        <div id="error"></div>
+        
+        <!-- Lucky symbols decoration -->
+        <div class="lucky-symbols symbol-top-left">福</div>
+        <div class="lucky-symbols symbol-top-right">财</div>
+        <div class="lucky-symbols symbol-bottom-left">运</div>
+        <div class="lucky-symbols symbol-bottom-right">禄</div>
+        
+        <div id="canvas-container"></div>
+        <div id="burn-text">燃烧</div>
+        
+        <!-- Token Stats - Vertical below -->
+        <div id="token-stats">
+            <div class="stat-item">
+                市值<span class="stat-value" id="mcap">加载中</span>
+            </div>
+            <div class="stat-item">
+                总供应量<span class="stat-value" id="supply">加载中</span>
+            </div>
+            <div class="stat-item">
+                持有者<span class="stat-value" id="holders">加载中</span>
+            </div>
+        </div>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+        import { TGALoader } from 'three/addons/loaders/TGALoader.js';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // ANIMATION CONFIGURATION
+        const ANIMATION_FILE = 'Flying'; // Options: Flying, Idle, Roar, Attack_Breath, Attack_Left, Attack_Right, Attack_Tail, Bite, Knockout, Torando
+        const ANIMATIONS_TO_PLAY = 'all';
+        
+        // CDN Configuration - Load from GitHub Releases
+        const USE_CDN = true; // Set to false to use local files
+        const CDN_BASE_URL = 'https://github.com/iloveenergydrinks/bnburn/releases/download/v1';
+        
+        // Option 2: Split animation by time ranges (for showreel GLBs with multiple animations in one clip)
+        // Set to null to disable, or define time ranges like this:
+        const ANIMATION_TIME_RANGES = null;
+        
+        // Example: If you want to split "Take 001" into segments:
+        // const ANIMATION_TIME_RANGES = {
+        //     'Take 001': {
+        //         segments: [
+        //             { name: 'Idle', start: 0, end: 5 },
+        //             { name: 'Walk', start: 5, end: 10 },
+        //             { name: 'Run', start: 10, end: 15 },
+        //             { name: 'Attack', start: 15, end: 20 }
+        //         ],
+        //         playSegments: ['Idle', 'Walk']  // Which segments to play (or 'all')
+        //     }
+        // };
+
+        // Scene setup
+        const scene = new THREE.Scene();
+        // Transparent background to show CSS gradient
+        scene.background = null;
+
+        // Camera setup
+        const canvasContainer = document.getElementById('canvas-container');
+        const camera = new THREE.PerspectiveCamera(
+            50,
+            window.innerWidth / window.innerHeight,
+            0.01,
+            10000
+        );
+        camera.position.set(0, 1.5, 3);
+
+        // Renderer setup with transparent background
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, premultipliedAlpha: false });
+        renderer.setSize(window.innerWidth, window.innerHeight * 0.7);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1;
+        canvasContainer.appendChild(renderer.domElement);
+
+        // Controls - enable rotation only, no zoom or pan
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.enableZoom = false;
+        controls.enablePan = false;
+        controls.target.set(0, 0, 0);
+
+        // Lighting - Much brighter for FBX models
+        const ambientLight = new THREE.AmbientLight(0xffffff, 3.0);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 3.0);
+        directionalLight.position.set(5, 10, 7.5);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        scene.add(directionalLight);
+
+        const pointLight1 = new THREE.PointLight(0xffffff, 2.0);
+        pointLight1.position.set(-5, 5, -5);
+        scene.add(pointLight1);
+
+        const pointLight2 = new THREE.PointLight(0xffffff, 2.0);
+        pointLight2.position.set(5, 5, 5);
+        scene.add(pointLight2);
+
+        // Additional front light to brighten the dragon
+        const frontLight = new THREE.DirectionalLight(0xffffff, 2.5);
+        frontLight.position.set(0, 5, 10);
+        scene.add(frontLight);
+
+        // Additional lights from sides
+        const leftLight = new THREE.DirectionalLight(0xffffff, 1.5);
+        leftLight.position.set(-10, 5, 0);
+        scene.add(leftLight);
+
+        const rightLight = new THREE.DirectionalLight(0xffffff, 1.5);
+        rightLight.position.set(10, 5, 0);
+        scene.add(rightLight);
+
+        let model = null;
+        let mixer = null;
+        const clock = new THREE.Clock();
+
+        // Load FBX model with animation
+        const manager = new THREE.LoadingManager();
+        manager.setURLModifier((url) => {
+            // Redirect texture paths to correct location
+            if (url.includes('.tga')) {
+                const filename = url.split('/').pop().replace('..\\', '').replace('../', '');
+                // Textures not in CDN, use local or skip
+                if (USE_CDN) {
+                    return '/placeholder.tga'; // Will use default material
+                }
+                return `/assets/uploads_files_5116320_textures/${filename}`;
+            }
+            return url;
+        });
+        
+        const loader = new FBXLoader(manager);
+        
+        // Add TGA loader support for textures
+        const tgaLoader = new TGALoader();
+        manager.addHandler(/\.tga$/i, tgaLoader);
+        
+        // Determine model URL (CDN or local)
+        const modelUrl = USE_CDN 
+            ? `${CDN_BASE_URL}/ANIM_Chinese_Dragon_${ANIMATION_FILE}.fbx`
+            : `/assets/Style_one/ANIM_Chinese_Dragon_${ANIMATION_FILE}.fbx`;
+        
+        console.log('Loading model from:', modelUrl);
+        
+        loader.load(
+            modelUrl,
+            (fbx) => {
+                model = fbx;
+                
+                // Center and scale the model
+                const box = new THREE.Box3().setFromObject(model);
+                const center = box.getCenter(new THREE.Vector3());
+                const size = box.getSize(new THREE.Vector3());
+                
+                console.log('Original model size:', size);
+                console.log('Original model center:', center);
+                
+                // Scale to a reasonable size (about 3 units tall)
+                const maxDim = Math.max(size.x, size.y, size.z);
+                const targetSize = 3;
+                const scale = targetSize / maxDim;
+                
+                model.scale.set(scale, scale, scale);
+                
+                // Position model so its center is at origin
+                model.position.x = -center.x * scale;
+                model.position.y = -center.y * scale;
+                model.position.z = -center.z * scale;
+                
+                console.log('Scale applied:', scale);
+                console.log('Model position:', model.position);
+                console.log('Camera position:', camera.position);
+
+                // Enable shadows and fix material issues
+                model.traverse((child) => {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                        
+                        // Fix for models with inverted faces or transparency issues
+                        if (child.material) {
+                            child.material.side = THREE.DoubleSide; // Render both sides
+                            child.material.transparent = false;
+                            child.material.opacity = 1.0;
+                            child.material.depthWrite = true;
+                            child.material.depthTest = true;
+                        }
+                    }
+                });
+                
+                console.log('Model materials fixed for double-sided rendering');
+
+                scene.add(model);
+                
+                // Check for animations in FBX
+                if (fbx.animations && fbx.animations.length > 0) {
+                    mixer = new THREE.AnimationMixer(model);
+                    
+                    console.log(`Found ${fbx.animations.length} animation(s) in the FBX file:`);
+                    fbx.animations.forEach((clip, index) => {
+                        console.log(`  [${index}] "${clip.name}" (duration: ${clip.duration.toFixed(2)}s)`);
+                    });
+                    
+                    // Play all animations in the FBX file
+                    fbx.animations.forEach((clip) => {
+                        const action = mixer.clipAction(clip);
+                        action.play();
+                        console.log('▶ Playing:', clip.name);
+                    });
+                } else {
+                    console.log('No animations found in the FBX file');
+                }
+                
+                // Hide loading
+                document.getElementById('loading').style.display = 'none';
+            },
+            (xhr) => {
+                const percent = (xhr.loaded / xhr.total) * 100;
+                console.log(percent + '% loaded');
+            },
+            (error) => {
+                console.error('Error loading model:', error);
+                document.getElementById('loading').style.display = 'none';
+                const errorDiv = document.getElementById('error');
+                errorDiv.textContent = 'Failed to load 3D model. Please check the console for details.';
+                errorDiv.style.display = 'block';
+            }
+        );
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Update animation mixer
+            if (mixer) {
+                const delta = clock.getDelta();
+                mixer.update(delta);
+            }
+            
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight * 0.7);
+        });
+
+        // Start animation
+        animate();
+
+        // Token tracking functionality
+        const TOKEN_ADDRESS = '0x716e22aba9b606b942594bb09e0060908eAa1758';
+        const BSCSCAN_API_KEY = 'R7PYKNI3F3HWAC9TVPQYNIUFYFUJK2PU7V';
+        
+        async function fetchTokenStats() {
+            console.log('=== Fetching Token Stats ===');
+            
+            try {
+                // Use API endpoint (works both locally and in production)
+                const apiUrl = window.location.origin + '/api/token-stats';
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+                
+                console.log('Token stats received:', data);
+                
+                document.getElementById('supply').textContent = data.supply || '1,000,000,000';
+                document.getElementById('holders').textContent = data.holders || '1';
+                document.getElementById('mcap').textContent = data.mcap || '$0.5M';
+                
+                console.log('✓ All stats updated successfully');
+            } catch (error) {
+                console.error('✗ Failed to fetch stats:', error);
+                // Fallback values
+                document.getElementById('supply').textContent = '1,000,000,000';
+                document.getElementById('holders').textContent = '1';
+                document.getElementById('mcap').textContent = '$0.5M';
+            }
+        }
+        
+        // Fetch stats on load
+        fetchTokenStats();
+        
+        // Refresh stats every 30 seconds
+        setInterval(fetchTokenStats, 30000);
+    </script>
+</body>
+</html>
+
