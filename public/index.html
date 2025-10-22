@@ -276,11 +276,8 @@
         import { TGALoader } from 'three/addons/loaders/TGALoader.js';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-        // Use smaller GLB file for faster loading (26MB vs 135MB FBX)
-        const USE_GLB = true;
-        
-        console.log('Environment:', isProduction ? 'Production (Railway)' : 'Local Development');
-        console.log('Will use:', USE_CDN ? 'CDN (GitHub Releases via proxy)' : 'Local files');
+        // Use GLB file for faster loading (54MB, includes animations)
+        console.log('Loading GLB model with animations...');
         
         // Option 2: Split animation by time ranges (for showreel GLBs with multiple animations in one clip)
         // Set to null to disable, or define time ranges like this:
