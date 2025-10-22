@@ -286,7 +286,7 @@
             0.01,
             10000
         );
-        camera.position.set(0, 2, 8);
+        camera.position.set(0, 1.5, 3);
 
         // Renderer setup with transparent background
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, premultipliedAlpha: false });
@@ -344,13 +344,27 @@
         let mixer = null;
         const clock = new THREE.Clock();
 
-        // Load GLB model (56MB - works without LFS for Railway)
-        const loader = new GLTFLoader();
+        // Load FBX model with animation
+        const manager = new THREE.LoadingManager();
+        manager.setURLModifier((url) => {
+            // Redirect texture paths to correct location
+            if (url.includes('.tga')) {
+                const filename = url.split('/').pop().replace('..\\', '').replace('../', '');
+                return `/assets/uploads_files_5116320_textures/${filename}`;
+            }
+            return url;
+        });
+        
+        const loader = new FBXLoader(manager);
+        
+        // Add TGA loader support for textures
+        const tgaLoader = new TGALoader();
+        manager.addHandler(/\.tga$/i, tgaLoader);
         
         loader.load(
-            '/assets/uploads_files_5116320_Chinese+Dragon.glb',
-            (gltf) => {
-                model = gltf.scene;
+            `/assets/Style_one/ANIM_Chinese_Dragon_${ANIMATION_FILE}.fbx`,
+            (fbx) => {
+                model = fbx;
                 
                 // Center and scale the model
                 const box = new THREE.Box3().setFromObject(model);
@@ -397,23 +411,23 @@
 
                 scene.add(model);
                 
-                // Check for animations
-                if (gltf.animations && gltf.animations.length > 0) {
+                // Check for animations in FBX
+                if (fbx.animations && fbx.animations.length > 0) {
                     mixer = new THREE.AnimationMixer(model);
                     
-                    console.log(`Found ${gltf.animations.length} animation(s):`);
-                    gltf.animations.forEach((clip, index) => {
+                    console.log(`Found ${fbx.animations.length} animation(s) in the FBX file:`);
+                    fbx.animations.forEach((clip, index) => {
                         console.log(`  [${index}] "${clip.name}" (duration: ${clip.duration.toFixed(2)}s)`);
                     });
                     
-                    // Play all animations
-                    gltf.animations.forEach((clip) => {
+                    // Play all animations in the FBX file
+                    fbx.animations.forEach((clip) => {
                         const action = mixer.clipAction(clip);
                         action.play();
                         console.log('▶ Playing:', clip.name);
                     });
                 } else {
-                    console.log('No animations found');
+                    console.log('No animations found in the FBX file');
                 }
                 
                 // Hide loading
