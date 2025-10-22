@@ -4,9 +4,11 @@
   "description": "3D GLB model viewer",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "node server.js & node api-proxy.js",
     "api": "node api-proxy.js",
-    "dev": "node server.js & node api-proxy.js"
+    "web": "node server.js",
+    "dev": "node server.js & node api-proxy.js",
+    "postinstall": "git lfs pull || true"
   },
   "keywords": ["3d", "glb", "viewer"],
   "author": "",

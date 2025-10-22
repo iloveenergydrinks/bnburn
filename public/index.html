@@ -299,12 +299,12 @@
         renderer.toneMappingExposure = 1;
         canvasContainer.appendChild(renderer.domElement);
 
-        // Controls - enable rotation and zoom
+        // Controls - enable rotation only, no zoom or pan
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
-        controls.minDistance = 1;
-        controls.maxDistance = 500;
+        controls.enableZoom = false;
+        controls.enablePan = false;
         controls.target.set(0, 0, 0);
 
         // Lighting - Much brighter for FBX models
@@ -478,8 +478,9 @@
             console.log('=== Fetching Token Stats ===');
             
             try {
-                // Use local API proxy to avoid CORS issues
-                const response = await fetch('http://localhost:3001/api/token-stats');
+                // Use API endpoint (works both locally and in production)
+                const apiUrl = window.location.origin + '/api/token-stats';
+                const response = await fetch(apiUrl);
                 const data = await response.json();
                 
                 console.log('Token stats received:', data);
