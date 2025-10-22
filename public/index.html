@@ -117,106 +117,18 @@
         .symbol-bottom-left { bottom: 15%; left: 5%; }
         .symbol-bottom-right { bottom: 15%; right: 5%; }
 
-        /* Realistic flame border effects */
-        .flame-container {
+        /* Fire frame video border */
+        #fire-frame-video {
             position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
             pointer-events: none;
-            z-index: 999;
-        }
-
-        .flame-top {
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 80px;
-            background: linear-gradient(to bottom,
-                rgba(255, 69, 0, 0.6) 0%,
-                rgba(255, 140, 0, 0.4) 30%,
-                rgba(255, 215, 0, 0.2) 60%,
-                transparent 100%);
-            filter: blur(3px);
-            animation: flameFlicker 0.3s infinite alternate;
-        }
-
-        .flame-bottom {
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 100px;
-            background: linear-gradient(to top,
-                rgba(255, 69, 0, 0.7) 0%,
-                rgba(255, 140, 0, 0.5) 25%,
-                rgba(255, 215, 0, 0.3) 50%,
-                transparent 100%);
-            filter: blur(4px);
-            animation: flameFlicker 0.4s infinite alternate;
-        }
-
-        .flame-left {
-            left: 0;
-            top: 0;
-            width: 60px;
-            height: 100%;
-            background: linear-gradient(to right,
-                rgba(255, 69, 0, 0.5) 0%,
-                rgba(255, 140, 0, 0.3) 40%,
-                rgba(255, 215, 0, 0.15) 70%,
-                transparent 100%);
-            filter: blur(3px);
-            animation: flameFlicker 0.35s infinite alternate;
-        }
-
-        .flame-right {
-            right: 0;
-            top: 0;
-            width: 60px;
-            height: 100%;
-            background: linear-gradient(to left,
-                rgba(255, 69, 0, 0.5) 0%,
-                rgba(255, 140, 0, 0.3) 40%,
-                rgba(255, 215, 0, 0.15) 70%,
-                transparent 100%);
-            filter: blur(3px);
-            animation: flameFlicker 0.32s infinite alternate;
-        }
-
-        @keyframes flameFlicker {
-            0% { opacity: 1; transform: scaleY(1); }
-            25% { opacity: 0.9; transform: scaleY(1.05); }
-            50% { opacity: 0.95; transform: scaleY(0.98); }
-            75% { opacity: 0.92; transform: scaleY(1.03); }
-            100% { opacity: 0.97; transform: scaleY(1.01); }
-        }
-
-        /* Flame particles */
-        .flame-particle {
-            position: absolute;
-            width: 8px;
-            height: 15px;
-            background: radial-gradient(circle, 
-                rgba(255, 215, 0, 0.9) 0%, 
-                rgba(255, 140, 0, 0.6) 50%, 
-                rgba(255, 69, 0, 0.3) 100%);
-            border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
-            filter: blur(1px);
-            animation: riseFlame 2s infinite ease-out;
-        }
-
-        @keyframes riseFlame {
-            0% {
-                transform: translateY(0) scale(1);
-                opacity: 0;
-            }
-            10% {
-                opacity: 1;
-            }
-            50% {
-                opacity: 0.8;
-            }
-            100% {
-                transform: translateY(-100px) scale(0.3);
-                opacity: 0;
-            }
+            z-index: 9999;
+            opacity: 0.8;
+            mix-blend-mode: screen;
         }
 
         /* Token Stats - Vertical below text */
@@ -339,11 +251,10 @@
         </div>
         <div id="error"></div>
         
-        <!-- Flame border effects -->
-        <div class="flame-container flame-top"></div>
-        <div class="flame-container flame-bottom"></div>
-        <div class="flame-container flame-left"></div>
-        <div class="flame-container flame-right"></div>
+        <!-- Fire frame video overlay -->
+        <video id="fire-frame-video" autoplay loop muted playsinline>
+            <source src="/assets/vecteezy_fire-frame-loop-effect-burning-background-with-fire_9379521.mp4" type="video/mp4">
+        </video>
         
         <!-- Lucky symbols decoration -->
         <div class="lucky-symbols symbol-top-left">福</div>
